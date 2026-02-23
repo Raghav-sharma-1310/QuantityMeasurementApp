@@ -49,7 +49,8 @@
   │   │   └── 📁 java
   │   │       └── 📁 com
   │   │               └── 📁 quantitymeasurement
-  |   |                   └── 📄 Feet.java     
+  |   |                   └── 📄 Feet.java
+  |   |                   └── 📄 Inches.java     
   │   │                   └── 📄 QuantityMeasurementApp.java
   │   │
   │   └── 📁 test
@@ -57,6 +58,7 @@
   │           └── 📁 com
   │                   └── 📁 quantitymeasurement
   │                       └── 📄 FeetTest.java
+  │                       └── 📄 InchesTest.java
   |
   ├── 🚫 .gitignore
   └── 📘 README.md

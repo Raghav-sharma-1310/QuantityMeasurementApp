@@ -60,6 +60,7 @@
   │                       └── 📄 FeetTest.java
   │                       └── 📄 InchesTest.java
   |
+  ├── ⚙️ pom.xml
   ├── 🚫 .gitignore
   └── 📘 README.md
 ```

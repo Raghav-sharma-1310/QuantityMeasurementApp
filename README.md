@@ -74,6 +74,7 @@
   │               └── 📁 quantitymeasurement
   │                   └── 📄 QuantityMeasurementAppTest.java
   │
+  ├── ⚙️ pom.xml
   ├── 🚫 .gitignore
   └── 📘 README.md
 ```
@@ -87,10 +88,6 @@
 - Each Use Case introduces new functionality in small, controlled steps.
 - Existing behaviour is preserved through continuous refactoring.
 - Design evolves toward clean, maintainable, and well-tested software.
-
-### 📄 License
-
-> This project is licensed under the MIT License.
 
 ### 👨‍💻 Author
 

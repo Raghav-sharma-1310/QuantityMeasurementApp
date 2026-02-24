@@ -39,6 +39,10 @@
   - Extends length addition to allow explicit specification of the result unit independent of operand units.
   - Enhances API flexibility by enabling arithmetic results to be expressed in any supported unit while preserving immutability and precision.
 
+- 🧩 **UC8 – Standalone Unit Refactor :**
+  - Extracts `LengthUnit` into a standalone enum responsible for all unit conversion logic.
+  - Improves architectural separation by delegating conversions to units, reducing coupling and enabling scalable support for future measurement categories.
+
 ### 🧰 Tech Stack
 
 - **Java 17+** — core language and application development  

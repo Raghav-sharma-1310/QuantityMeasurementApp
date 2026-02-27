@@ -104,6 +104,7 @@
   │                   ├── 📄 BackwardCompatibilityTest.java
   │                   ├── 📄 ConceptualValidationTest.java
   │                   ├── 📄 QuantityAdditionTest.java
+  |                   ├── 📄 QuantityArithematicTest.java
   │                   ├── 📄 QuantityConversionTest.java
   │                   ├── 📄 QuantityEqualityTest.java
   │                   ├── 📄 WeightQuantityTest.java

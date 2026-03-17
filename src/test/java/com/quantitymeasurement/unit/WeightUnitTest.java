@@ -1,4 +1,5 @@
 package com.quantitymeasurement.unit;
+
 import com.quantitymeasurement.interfaces.SupportsArithmetic;
 import com.quantitymeasurement.units.WeightUnit;
 

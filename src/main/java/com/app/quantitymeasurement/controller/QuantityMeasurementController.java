@@ -1,7 +1,9 @@
 package com.app.quantitymeasurement.controller;
 
-import com.app.quantitymeasurement.model.QuantityInputDTO;
-import com.app.quantitymeasurement.model.QuantityMeasurementDTO;
+import lombok.extern.slf4j.Slf4j;
+
+import com.app.quantitymeasurement.dto.request.QuantityInputDTO;
+import com.app.quantitymeasurement.dto.request.QuantityMeasurementDTO;
 import com.app.quantitymeasurement.service.IQuantityMeasurementService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,37 +12,26 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.logging.Logger;
 
-/**
- * QuantityMeasurementController
- *
- * REST controller that exposes quantity measurement operations as HTTP endpoints.
- * All business logic is delegated to {@link IQuantityMeasurementService}; this
- * class is responsible only for request routing, input validation, and response
- * wrapping.
- *
- * Base URL: {@code /api/v1/quantities}
- */
+
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/quantities")
 @Tag(name = "Quantity Measurements", 
-	 description = "REST API for quantity measurement operations")
+     description = "REST API for quantity measurement operations")
 public class QuantityMeasurementController {
 
-    private static final Logger logger = Logger.getLogger(
-        QuantityMeasurementController.class.getName()
-    );
+    private final IQuantityMeasurementService quantityMeasurementService;
+    
+    public QuantityMeasurementController(IQuantityMeasurementService quantityMeasurementService) {
+		this.quantityMeasurementService = quantityMeasurementService;
+	}
 
-    @Autowired
-    private IQuantityMeasurementService quantityMeasurementService;
-
-    // -------------------------------------------------------------------------
+	// -------------------------------------------------------------------------
     // POST — operation endpoints
     // -------------------------------------------------------------------------
 
@@ -57,7 +48,7 @@ public class QuantityMeasurementController {
     public ResponseEntity<QuantityMeasurementDTO> compareQuantities(
             @Valid @RequestBody QuantityInputDTO quantityInputDTO) {
     	
-        logger.info("POST /compare");
+        log.info("POST /compare");
         
         return ResponseEntity.ok(
         		quantityMeasurementService.compare(
@@ -80,7 +71,7 @@ public class QuantityMeasurementController {
                description = "Converts a quantity from its current unit to the specified target unit")
     public ResponseEntity<QuantityMeasurementDTO> convertQuantity(
             @Valid @RequestBody QuantityInputDTO quantityInputDTO) {
-        logger.info("POST /convert");
+        log.info("POST /convert");
         return ResponseEntity.ok(quantityMeasurementService.convert(
             quantityInputDTO.getThisQuantityDTO(),
             quantityInputDTO.getThatQuantityDTO()
@@ -99,7 +90,7 @@ public class QuantityMeasurementController {
                description = "Adds two quantities, with an optional target unit for the result")
     public ResponseEntity<QuantityMeasurementDTO> addQuantities(
             @Valid @RequestBody QuantityInputDTO quantityInputDTO) {
-        logger.info("POST /add");
+        log.info("POST /add");
         QuantityMeasurementDTO result = (quantityInputDTO.getTargetUnitDTO() != null)
             ? quantityMeasurementService.add(
                 quantityInputDTO.getThisQuantityDTO(),
@@ -124,7 +115,7 @@ public class QuantityMeasurementController {
                description = "Subtracts the second quantity from the first, with an optional target unit")
     public ResponseEntity<QuantityMeasurementDTO> subtractQuantities(
             @Valid @RequestBody QuantityInputDTO quantityInputDTO) {
-        logger.info("POST /subtract");
+        log.info("POST /subtract");
         QuantityMeasurementDTO result = (quantityInputDTO.getTargetUnitDTO() != null)
             ? quantityMeasurementService.subtract(
                 quantityInputDTO.getThisQuantityDTO(),
@@ -148,7 +139,7 @@ public class QuantityMeasurementController {
                description = "Divides the first quantity by the second and returns the numeric ratio")
     public ResponseEntity<QuantityMeasurementDTO> divideQuantities(
             @Valid @RequestBody QuantityInputDTO quantityInputDTO) {
-        logger.info("POST /divide");
+        log.info("POST /divide");
         return ResponseEntity.ok(quantityMeasurementService.divide(
             quantityInputDTO.getThisQuantityDTO(),
             quantityInputDTO.getThatQuantityDTO()
@@ -171,7 +162,7 @@ public class QuantityMeasurementController {
     public ResponseEntity<List<QuantityMeasurementDTO>> getOperationHistory(
             @Parameter(description = "Operation type — compare, convert, add, subtract, divide")
             @PathVariable String operation) {
-        logger.info("GET /history/operation/" + operation);
+        log.info("GET /history/operation/" + operation);
         return ResponseEntity.ok(quantityMeasurementService.getHistoryByOperation(operation));
     }
 
@@ -189,7 +180,7 @@ public class QuantityMeasurementController {
     public ResponseEntity<List<QuantityMeasurementDTO>> getMeasurementHistory(
             @Parameter(description = "Measurement type — LengthUnit, WeightUnit, VolumeUnit, TemperatureUnit")
             @PathVariable String measurementType) {
-        logger.info("GET /history/type/" + measurementType);
+        log.info("GET /history/type/" + measurementType);
         return ResponseEntity.ok(quantityMeasurementService.getHistoryByMeasurementType(measurementType));
     }
 
@@ -202,7 +193,7 @@ public class QuantityMeasurementController {
     @Operation(summary = "Get error history",
                description = "Returns all measurement records that resulted in an error")
     public ResponseEntity<List<QuantityMeasurementDTO>> getErrorHistory() {
-        logger.info("GET /history/errored");
+        log.info("GET /history/errored");
         return ResponseEntity.ok(quantityMeasurementService.getErrorHistory());
     }
 
@@ -218,7 +209,7 @@ public class QuantityMeasurementController {
     public ResponseEntity<Long> getOperationCount(
             @Parameter(description = "Operation type to count — COMPARE, CONVERT, ADD, SUBTRACT, DIVIDE")
             @PathVariable String operation) {
-        logger.info("GET /count/" + operation);
+        log.info("GET /count/" + operation);
         return ResponseEntity.ok(quantityMeasurementService.getOperationCount(operation));
     }
 }

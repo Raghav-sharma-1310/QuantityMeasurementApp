@@ -1,7 +1,6 @@
 package com.app.quantitymeasurement.service;
 
 import com.app.quantitymeasurement.dto.request.AuthRequest;
-import com.app.quantitymeasurement.dto.request.ForgotPasswordRequest;
 import com.app.quantitymeasurement.dto.request.RegisterRequest;
 import com.app.quantitymeasurement.dto.response.AuthResponse;
 import com.app.quantitymeasurement.dto.response.MessageResponse;
@@ -11,10 +10,7 @@ import com.app.quantitymeasurement.enums.Role;
 import com.app.quantitymeasurement.repository.UserRepository;
 import com.app.quantitymeasurement.security.UserPrincipal;
 import com.app.quantitymeasurement.security.jwt.JwtTokenProvider;
-
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +21,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.util.Random;
 
 @Slf4j
 @Service
@@ -36,13 +34,8 @@ public class AuthenticationService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
 
-    public AuthenticationService(
-            AuthenticationManager authenticationManager,
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JwtTokenProvider jwtTokenProvider,
-            EmailService emailService) {
-
+    public AuthenticationService(AuthenticationManager authenticationManager, UserRepository userRepository,
+                                 PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, EmailService emailService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -50,32 +43,10 @@ public class AuthenticationService {
         this.emailService = emailService;
     }
     
-    // =========================================================================
-    // Register
-    // =========================================================================
-
-    /**
-     * Registers a new local user account.
-     *
-     * <ol>
-     *   <li>Reject duplicate email addresses (409 Conflict).</li>
-     *   <li>BCrypt-hash the raw password before persisting.</li>
-     *   <li>Authenticate programmatically so a JWT can be issued immediately.</li>
-     *   <li>Send a welcome email asynchronously.</li>
-     * </ol>
-     *
-     * @param request the validated registration payload
-     * @return an {@link AuthResponse} containing the signed JWT
-     * @throws ResponseStatusException 409 if the email is already registered
-     */
-    public AuthResponse register(RegisterRequest request) {
-
+    // 1. REGISTER (Instant Verification, Manual Login Required)
+    public MessageResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            log.warn("Registration rejected — email already in use: {}", request.getEmail());
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Email is already in use."
-            );
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use.");
         }
 
         User newUser = User.builder()
@@ -84,69 +55,26 @@ public class AuthenticationService {
                 .name(request.getName())
                 .provider(AuthProvider.LOCAL)
                 .role(Role.USER)
+                .verified(true) // Instantly verified!
                 .build();
 
         userRepository.save(newUser);
-        log.info("Registered new user: {}", newUser.getEmail());
+        emailService.sendRegistrationEmail(newUser.getEmail(), newUser.getName() != null ? newUser.getName() : "User");
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        String token = jwtTokenProvider.generateToken(authentication);
-        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-
-        // Send welcome email (async — does not block the response)
-        emailService.sendRegistrationEmail(
-                newUser.getEmail(),
-                newUser.getName() != null ? newUser.getName() : "there"
-        );
-
-        return AuthResponse.builder()
-                .accessToken(token)
-                .tokenType("Bearer")
-                .email(principal.getEmail())
-                .name(principal.getUser().getName())
-                .role(principal.getUser().getRole().name())
-                .build();
+        return new MessageResponse("Registration successful! Please log in.");
     }
 
-    // =========================================================================
-    // Login
-    // =========================================================================
-
-    /**
-     * Authenticates an existing local user.
-     *
-     * <ol>
-     *   <li>Delegate to {@link AuthenticationManager}; DaoAuthenticationProvider
-     *       loads the user and verifies the BCrypt hash.</li>
-     *   <li>Issue a JWT on success.</li>
-     *   <li>Send a login-notification email asynchronously.</li>
-     * </ol>
-     *
-     * @param request the validated login payload
-     * @return an {@link AuthResponse} containing the signed JWT
-     * @throws ResponseStatusException 401 if credentials are invalid
-     */
+    // 2. LOGIN
     public AuthResponse login(AuthRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getEmail(),
-                            request.getPassword()
-                    )
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             String token = jwtTokenProvider.generateToken(authentication);
             UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
 
-            // Send login notification (async)
             emailService.sendLoginNotificationEmail(request.getEmail());
 
             return AuthResponse.builder()
@@ -158,103 +86,53 @@ public class AuthenticationService {
                     .build();
 
         } catch (AuthenticationException ex) {
-            log.warn("Login failed for email: {}", request.getEmail());
-            throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Invalid email or password!"
-            );
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password!");
         }
     }
 
-    // =========================================================================
-    // Forgot password
-    // =========================================================================
-
-    /**
-     * Resets a user's password without requiring the current password.
-     * Intended for the "Forgot Password" flow where the user is not logged in.
-     *
-     * <ol>
-     *   <li>Look up the user by email. Return 404 if not found.</li>
-     *   <li>BCrypt-hash and persist the new password.</li>
-     *   <li>Send a password-changed confirmation email asynchronously.</li>
-     * </ol>
-     *
-     * @param email   the registered email address (path variable)
-     * @param request the new password payload
-     * @return {@link MessageResponse} with a success message
-     * @throws ResponseStatusException 404 if the email is not found
-     */
-    public MessageResponse forgotPassword(String email, ForgotPasswordRequest request) {
-
+    // 3. FORGOT PASSWORD - Request OTP
+    public MessageResponse requestForgotPasswordOtp(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    log.warn("Forgot-password: user not found — {}", email);
-                    return new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Sorry! We cannot find the user email: " + email
-                    );
-                });
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        user.setOtpCode(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
         userRepository.save(user);
-        log.info("Password updated via forgotPassword for: {}", email);
 
-        // Send confirmation email (async)
-        emailService.sendForgotPasswordEmail(email);
-
-        return new MessageResponse("Password has been changed successfully!");
+        emailService.sendForgotPasswordOtpEmail(user.getEmail(), user.getName() != null ? user.getName() : "User", otp);
+        return new MessageResponse("OTP sent to your email.");
     }
 
-    // =========================================================================
-    // Reset password (logged-in user)
-    // =========================================================================
-
-    /**
-     * Resets a user's password while they are logged in.
-     * Requires the current password to be verified first.
-     *
-     * <ol>
-     *   <li>Look up the user by email. Return 404 if not found.</li>
-     *   <li>Verify {@code currentPassword} against the stored BCrypt hash.</li>
-     *   <li>BCrypt-hash and persist {@code newPassword}.</li>
-     *   <li>Send a password-reset confirmation email asynchronously.</li>
-     * </ol>
-     *
-     * @param email           the registered email address (path variable)
-     * @param currentPassword the user's current password (request param)
-     * @param newPassword     the desired new password (request param)
-     * @return {@link MessageResponse} with a success message
-     * @throws ResponseStatusException 404 if email not found, 400 if current password is wrong
-     */
-    public MessageResponse resetPassword(String email,
-                                         String currentPassword,
-                                         String newPassword) {
-
+    // 4. FORGOT PASSWORD - Verify OTP
+    public MessageResponse verifyForgotPasswordOtp(String email, String otp) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    log.warn("Reset-password: user not found — {}", email);
-                    return new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "User not found with email: " + email
-                    );
-                });
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            log.warn("Reset-password: incorrect current password for {}", email);
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Current password is incorrect!"
-            );
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(otp)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OTP.");
+        }
+        if (user.getOtpExpiry() == null || LocalDateTime.now().isAfter(user.getOtpExpiry())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP has expired.");
+        }
+        return new MessageResponse("OTP verified successfully.");
+    }
+
+    // 5. FORGOT PASSWORD - Reset Password
+    public MessageResponse resetPasswordWithOtp(String email, String otp, String newPassword) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(otp)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired OTP.");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setOtpCode(null);
+        user.setOtpExpiry(null);
         userRepository.save(user);
-        log.info("Password reset successfully for: {}", email);
 
-        // Send confirmation email (async)
-        emailService.sendPasswordResetEmail(email);
-
-        return new MessageResponse("Password reset successfully!");
+        emailService.sendPasswordResetEmail(user.getEmail());
+        return new MessageResponse("Password reset successfully.");
     }
 }

@@ -26,14 +26,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
-    private final  CustomOAuth2UserService customOAuth2UserService;
+    private final CustomOAuth2UserService customOAuth2UserService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
@@ -42,40 +41,26 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsConfigurationSource;
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
-			CustomOAuth2UserService customOAuth2UserService, JwtAuthenticationFilter jwtAuthenticationFilter,
-			JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint, JwtAccessDeniedHandler jwtAccessDeniedHandler,
-			OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
-			OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler,
-			CorsConfigurationSource corsConfigurationSource) {
-		super();
-		this.customUserDetailsService = customUserDetailsService;
-		this.customOAuth2UserService = customOAuth2UserService;
-		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-		this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
-		this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
-		this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
-		this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
-		this.corsConfigurationSource = corsConfigurationSource;
-	}
+            CustomOAuth2UserService customOAuth2UserService, JwtAuthenticationFilter jwtAuthenticationFilter,
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint, JwtAccessDeniedHandler jwtAccessDeniedHandler,
+            OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
+            OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler,
+            CorsConfigurationSource corsConfigurationSource) {
+        this.customUserDetailsService = customUserDetailsService;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
+        this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
+        this.corsConfigurationSource = corsConfigurationSource;
+    }
 
-	/**
-     * BCrypt password encoder. Used for hashing at registration and
-     * verifying at login. Default cost factor = 10 (1024 rounds).
-     *
-     * @return a BCryptPasswordEncoder instance
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Configures a DaoAuthenticationProvider that delegates user lookup to
-     * CustomUserDetailsService and password verification to BCrypt.
-     * Used by AuthenticationManager to process local login requests.
-     *
-     * @return a configured DaoAuthenticationProvider
-     */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -84,161 +69,58 @@ public class SecurityConfig {
         return provider;
     }
 
-    /**
-     * Exposes the AuthenticationManager as a bean so AuthController can
-     * programmatically authenticate login requests.
-     *
-     * @param authenticationConfiguration Spring Boot's auth configuration
-     * @return the application-wide AuthenticationManager
-     * @throws Exception if configuration fails
-     */
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    /**
-     * Defines the main HTTP security filter chain.
-     *
-     * <p>Filter processing order (relevant items):</p>
-     * <ol>
-     *   <li>JwtAuthenticationFilter — validates Bearer token, sets SecurityContext.</li>
-     *   <li>Authorization filter — enforces URL access rules declared below.</li>
-     * </ol>
-     *
-     * <p>Rules are evaluated top-to-bottom; the first matching rule wins.
-     * More specific patterns must come before broader catch-all patterns.</p>
-     *
-     * @param http the HttpSecurity builder
-     * @return the fully configured SecurityFilterChain
-     * @throws Exception if configuration fails
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
-            /*
-             * CORS — must be enabled in Spring Security so that the CORS filter runs
-             * before authentication checks. Preflight OPTIONS requests would otherwise
-             * be rejected with 401 before the browser ever sends the real request.
-             * The actual CORS policy (allowed origins, methods, headers) is defined
-             * in CorsConfig#corsConfigurationSource().
-             */
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
-
-            /*
-             * CSRF disabled — stateless JWT APIs are not vulnerable to CSRF because
-             * there is no session cookie for an attacker to exploit.
-             */
             .csrf(AbstractHttpConfigurer::disable)
-
-            /*
-             * STATELESS session policy — Spring Security will never create or use
-             * an HTTP session. Each request must carry its own valid JWT.
-             */
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-
-            /*
-             * Exception handlers:
-             *   authenticationEntryPoint — unauthenticated requests → 401 JSON
-             *   accessDeniedHandler      — authenticated but forbidden → 403 JSON
-             */
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 .accessDeniedHandler(jwtAccessDeniedHandler)
             )
-
-            /*
-             * URL-level authorisation rules (first match wins).
-             */
             .authorizeHttpRequests(auth -> auth
+                // PUBLIC: Auth & OAuth2
+                .requestMatchers("/api/v1/auth/**", "/oauth2/**", "/login/oauth2/**").permitAll()
 
-                /* ---- PROTECTED: user profile (must come before the bulk permitAll) ---- */
-        		.requestMatchers("/api/v1/auth/me").authenticated()
-
-                /* ---- PUBLIC: auth, OAuth2, and public password endpoints ---- */
+                // PUBLIC: Dashboard Measurement Calculations
                 .requestMatchers(
-                		"/api/v1/auth/login",
-                		"/api/v1/auth/register",
-                		"/api/v1/auth/forgotPassword/**",
-                		"/oauth2/**",
-                		"/login/oauth2/**"
-                		).permitAll()
-
-                /* ---- PUBLIC: API docs / Swagger UI ---- */
-                .requestMatchers(
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/v3/api-docs/**",
-                    "/v3/api-docs"
+                    "/api/v1/quantities/compare", 
+                    "/api/v1/quantities/convert", 
+                    "/api/v1/quantities/add", 
+                    "/api/v1/quantities/subtract", 
+                    "/api/v1/quantities/divide"
                 ).permitAll()
 
-                /* ---- PUBLIC: H2 console (dev profile only) ---- */
-                .requestMatchers("/h2-console/**").permitAll()
+                // PROTECTED: History requires Login
+                .requestMatchers("/api/v1/quantities/history/**", "/api/v1/auth/me").authenticated()
 
-                /* ---- PUBLIC: actuator health & info ---- */
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                // ADMIN ONLY: Error history
+                .requestMatchers(HttpMethod.GET, "/api/v1/quantities/history/errored").hasRole("ADMIN")
 
-                /*
-                 * ---- ADMIN ONLY: error history ----
-                 * Returns failed operations across ALL users — restricted to admins.
-                 */
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/v1/quantities/history/errored"
-                ).hasRole("ADMIN")
+                // PUBLIC: System Endpoints
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/actuator/**").permitAll()
 
-                /*
-                 * ---- USER + ADMIN: all other quantity operations ----
-                 * Compare, convert, add, subtract, divide, history, count.
-                 */
-                .requestMatchers("/api/v1/quantities/**")
-                    .hasAnyRole("USER", "ADMIN")
-
-                /* ---- CATCH-ALL: any other endpoint requires authentication ---- */
+                // CATCH-ALL
                 .anyRequest().authenticated()
             )
-
-            /*
-             * Frame options sameOrigin — required for H2 console which uses an iframe.
-             */
-            .headers(headers ->
-                headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
-            )
-
-            /*
-             * Disable HTTP Basic and form login — REST APIs must not trigger
-             * browser authentication dialogs or redirect to a login page.
-             */
+            .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
-
-            /*
-             * Google OAuth2 login:
-             *   - CustomOAuth2UserService  : resolves Google profile → local User
-             *   - SuccessHandler           : issues JWT, redirects to frontend
-             *   - FailureHandler           : redirects with ?error= on failure
-             */
+            
             .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo ->
-                    userInfo.userService(customOAuth2UserService)
-                )
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 .successHandler(oAuth2AuthenticationSuccessHandler)
                 .failureHandler(oAuth2AuthenticationFailureHandler)
             )
-
-            /* Register the DaoAuthenticationProvider for local logins */
+            
             .authenticationProvider(authenticationProvider())
-
-            /*
-             * Insert the JWT filter BEFORE UsernamePasswordAuthenticationFilter
-             * so that JWT-authenticated requests are identified early in the chain.
-             */
-            .addFilterBefore(jwtAuthenticationFilter,
-                             UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

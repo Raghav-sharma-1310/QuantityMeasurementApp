@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
-	private final JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
     private final String fromAddress;
 
     public EmailService(
@@ -31,8 +31,8 @@ public class EmailService {
     /**
      * Sends a welcome email to a newly registered user.
      *
-     * @param toEmail   the recipient's email address
-     * @param userName  the user's display name
+     * @param toEmail  the recipient's email address
+     * @param userName the user's display name
      */
     @Async
     public void sendRegistrationEmail(String toEmail, String userName) {
@@ -151,6 +151,61 @@ public class EmailService {
             log.info("Password-reset confirmation email sent to {}", toEmail);
         } catch (Exception ex) {
             log.error("Failed to send password-reset email to {}: {}", toEmail, ex.getMessage());
+        }
+    }
+
+    // =========================================================================
+    // NEW: OTP METHODS ADDED FOR SECURE VERIFICATION FLOWS
+    // =========================================================================
+
+    /**
+     * Sends a 6-digit OTP for initial account verification (Registration).
+     *
+     * @param toEmail  the recipient's email address
+     * @param userName the user's display name
+     * @param otp      the generated 6-digit code
+     */
+    @Async
+    public void sendOtpEmail(String toEmail, String userName, String otp) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromAddress);
+            message.setTo(toEmail);
+            message.setSubject("Verify your Quantity Measurement Account");
+            message.setText("Hi " + userName + ",\n\n" +
+                    "Your email verification code is: " + otp + "\n\n" +
+                    "This code will expire in 10 minutes.\n\n" +
+                    "Regards,\nQuantity Measurement Team");
+            mailSender.send(message);
+            log.info("Registration OTP email sent to {}", toEmail);
+        } catch (Exception ex) {
+            log.error("Failed to send Registration OTP email to {}: {}", toEmail, ex.getMessage());
+        }
+    }
+
+    /**
+     * Sends a 6-digit OTP to verify identity during a Forgot Password request.
+     *
+     * @param toEmail  the recipient's email address
+     * @param userName the user's display name
+     * @param otp      the generated 6-digit code
+     */
+    @Async
+    public void sendForgotPasswordOtpEmail(String toEmail, String userName, String otp) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromAddress);
+            message.setTo(toEmail);
+            message.setSubject("Password Reset Verification Code");
+            message.setText("Hi " + userName + ",\n\n" +
+                    "We received a request to reset your password. Your verification code is: " + otp + "\n\n" +
+                    "This code will expire in 10 minutes.\n\n" +
+                    "If you did not request a password reset, please ignore this email.\n\n" +
+                    "Regards,\nQuantity Measurement Team");
+            mailSender.send(message);
+            log.info("Forgot Password OTP email sent to {}", toEmail);
+        } catch (Exception ex) {
+            log.error("Failed to send Forgot Password OTP email to {}: {}", toEmail, ex.getMessage());
         }
     }
 }

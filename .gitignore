@@ -12,6 +12,7 @@ build/
 .mvn/
 node_modules/
 module-info.java
+HELP.md
 
 # IDE - Eclipse
 .metadata/
@@ -75,3 +76,4 @@ coverage/
 *.pem
 *.crt
 *.key
+*.factorypath

@@ -1,5 +1,6 @@
 # 📏 QuantityMeasurementApp
 
+HEAD
 > A Java-based **Spring Boot REST application** developed using Test-Driven Development (TDD) to progressively design and evolve a multi-category quantity measurement system. The project emphasizes incremental development, clean object-oriented design, and continuous architectural refactoring to build a scalable, flexible, and maintainable domain model.
 
 ### 📖 Overview
@@ -7,6 +8,14 @@
 - Modular **Spring Boot-based Java application** focused on modelling multi-category quantity measurements (length, weight, volume, and temperature) with full conversion and controlled arithmetic support.
 - Organized around incremental Use Cases evolving from simple equality checks to a **scalable, capability-aware and layered (N-Tier) architecture**.
 - Emphasizes clarity, consistency, and maintainable structure through **Test-Driven Development (TDD)** and continuous refactoring.
+=======
+> A Java application developed using Test-Driven Development (TDD) to progressively design and refine a quantity measurement system. The project emphasizes incremental development, clean object-oriented design, and continuous refactoring to build a flexible and maintainable domain model over time.
+
+### 📖 Overview
+
+- Modular Java project focused on modelling multi-category quantity measurements (length, weight, and volume).
+- Organized around incremental Use Cases to evolve the domain design.
+- Emphasizes clarity, consistency, and maintainable structure as the system grows.
 
 ### ✅ Implemented Features
 
@@ -70,6 +79,7 @@
   - Refactors `IMeasurable` with default capability validation to allow category-specific operation support.
   - Prevents unsupported arithmetic operations (addition, subtraction, division) through explicit validation and meaningful exceptions.
   - Demonstrates Interface Segregation and capability-based design while preserving backward compatibility for length, weight, and volume.
+
 
 - 🧩 **UC15 – N-Tier Architecture Refactoring :**
   - Refactors the Quantity Measurement Application from a monolithic design into a structured **N-Tier architecture**.
@@ -403,10 +413,32 @@ java -jar target/quantity-measurement-app-0.0.1-SNAPSHOT.jar --spring.profiles.a
 ```
 
 And supply all required environment variables (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MS`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OAUTH2_REDIRECT_URI`, `MAIL_USERNAME`, `MAIL_PASSWORD`) via your deployment environment or a `.env` file (never committed to VCS).
+=======
+### 🧰 Tech Stack
+
+- **Java 17+** — core language and application development  
+- **Maven** — build automation and dependency management  
+- **JUnit 5** — unit testing framework supporting TDD workflow
+
+### ▶️ Build / Run
+
+ - Build the project:
+  
+    ```
+    mvn clean install
+    ```
+
+- Run tests:
+    
+    ```
+    mvn test
+    ```
+>>>>>>> fb97a2c2396fce3fd22418befc81af7e2996808f
 
 ### 📂 Project Structure
 
 ```
+
 📦 QuantityMeasurementApp
 │
 ├── 📁 src
@@ -644,6 +676,48 @@ And supply all required environment variables (`DB_URL`, `DB_USERNAME`, `DB_PASS
 ### ⚙️ Development Approach
 
 > This project follows an incremental **Test-Driven Development (TDD)** workflow:
+=======
+  📦 QuantityMeasurementApp
+  │
+  ├── 📁 src
+  │   ├── 📁 main
+  │   │   └── 📁 java
+  │   │       └── 📁 com
+  │   │           └── 📁 quantitymeasurement
+  │   │               ├── 📄 IMeasurable.java
+  │   │               ├── 📄 Quantity.java
+  │   │               ├── 📄 LengthUnit.java
+  |   |               ├── 📄 TemperatureUnit.java
+  │   │               ├── 📄 SupportsArithmetic.java
+  │   │               ├── 📄 WeightUnit.java
+  │   │               ├── 📄 VolumeUnit.java
+  │   │               └── 📄 QuantityMeasurementApp.java
+  │   │
+  │   └── 📁 test
+  │       └── 📁 java
+  │           └── 📁 com
+  │               └── 📁 quantitymeasurement
+  │                   ├── 📄 ArchitecturalTest.java
+  │                   ├── 📄 BackwardCompatibilityTest.java
+  │                   ├── 📄 ConceptualValidationTest.java
+  |                   ├── 📄 CentralizedArithmeticLogicTest
+  │                   ├── 📄 QuantityAdditionTest.java
+  |                   ├── 📄 QuantityArithematicTest.java
+  │                   ├── 📄 QuantityConversionTest.java
+  │                   ├── 📄 QuantityEqualityTest.java
+  │                   ├── 📄 TemperatureQuantityTest.java
+  │                   ├── 📄 WeightQuantityTest.java
+  │                   └── 📄 VolumeQuantityTest.java
+  │
+  ├── ⚙️ pom.xml
+  ├── 🚫 .gitignore
+  └── 📘 README.md
+```
+
+### ⚙️ Development Approach
+
+ > This project follows an incremental **Test-Driven Development (TDD)** workflow:
+>>>>>>> fb97a2c2396fce3fd22418befc81af7e2996808f
 
 - Tests are written first to define expected behaviour.
 - Implementation code is developed to satisfy the tests.
